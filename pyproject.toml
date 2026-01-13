@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proteomics_python"
+version = "0.1.0"
+description = "My personal collection of useful functions and scripts to analyse mass-spectromy based proteomics data"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+  { name = "J Rytved", email = "johan@rytved.dk" }
+]
+dependencies = [
+  "pyopenms>=3.5.0",
+  "pandas>=2.3.0"
+  
+]
+
+[project.urls]
+Homepage = "https://github.com/jrytved/proteomics_python"
+Source = "https://github.com/jrytved/proteomics_python"
