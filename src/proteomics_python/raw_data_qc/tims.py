@@ -1,4 +1,5 @@
-import pandas as pandasimport alphatims.bruker
+import pandas as pandas
+import alphatims.bruker
 import re
 from pathlib import Path
 
