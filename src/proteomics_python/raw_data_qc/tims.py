@@ -3,7 +3,11 @@ import alphatims.bruker
 import re
 from pathlib import Path
 
-def extract_tic_data(tims_folder_path, output_path, re_pattern = 'AL000028_S_([A-z]\\d)'):
+def extract_tic_data(
+	tims_folder_path: str,
+	output_path: str,
+	re_pattern: str = 'AL000028_S_([A-z]\\d)'
+):
 
 	"""
 
@@ -20,8 +24,8 @@ def extract_tic_data(tims_folder_path, output_path, re_pattern = 'AL000028_S_([A
 	full_paths = [f for f in p.iterdir()]
 
 	for path in full_paths:
-		id = re.search(re_pattern, path).group(1)
-		data = alphatims.bruker.TimsTOF(path)
+		id = re.search(re_pattern, tims_folder_path).group(1)
+		data = alphatims.bruker.TimsTOF(tims_folder_path)
 		tic_data = data.frames.query('MsMsType == 0')[['Time', 'SummedIntensities']]
 
 		filename = f"{id}.csv"
@@ -32,6 +36,37 @@ def extract_tic_data(tims_folder_path, output_path, re_pattern = 'AL000028_S_([A
 		del bruker_data
 		del tic_data
 
+def extract_ion_chromatogram(
+    paths: list[str],
+    mz_low: float,
+    mz_high: float,
+    output_path: str,
+    pattern: str = r'AL000028_S_([A-Za-z]\d)',
+):
+    """
+    Extracts an ion chromatogram from the files given in path.
+    Uses the passed regex pattern to name files and dataframe ID column.
+    """
+    out_dir = Path(output_path)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    for path in paths:
+        path = Path(path)  # normalize to Path
+
+        match = re.search(pattern, path.name)
+        if not match:
+            raise ValueError(f"Pattern {pattern!r} not found in {path}")
+        sample_id = match.group(1)
+
+        # alphatims requires a string path so conv. from Path obj. b4 passing
+        data = alphatims.bruker.TimsTOF(str(path))
+        data_subset = data[:, :, 0, mz_low:mz_high, :]
+
+        out_file = out_dir / f"{sample_id}_{mz_low}_{mz_high}.csv"
+        data_subset.to_csv(out_file)
+
+        del data
+        del data_subset
 
 
 
