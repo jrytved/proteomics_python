@@ -2,38 +2,125 @@ import streamlit as st
 import pandas as pd
 from utils.datahandler import ParquetReport, MetadataFile
 from utils.session import init_session_state
+from tabs import data_upload, qc, summary_stats
 
 init_session_state()
 
-st.title("DIANNA")
-st.write("Quality Control and Analysis of Your DIA-NN Experiment")
+st.set_page_config(
+    page_title="DIA-NN QC Dashboard",
+    page_icon="🔬",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# ── Custom CSS ──────────────────────────────────────────────────────────────
+st.markdown("""
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+  html, body, [class*="css"] {
+      font-family: 'IBM Plex Sans', sans-serif;
+  }
+  h1, h2, h3 {
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: -0.02em;
+  }
+  .stTabs [data-baseweb="tab"] {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.82rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+  }
+  .stTabs [data-baseweb="tab-highlight"] {
+      background-color: #00b4d8;
+  }
+  .metric-card {
+      background: #0f1117;
+      border: 1px solid #2a2d3e;
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      margin-bottom: 0.5rem;
+  }
+  .sidebar-badge {
+      display: inline-block;
+      background: #00b4d8;
+      color: #000;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 3px;
+      margin-left: 6px;
+  }
+  .sidebar-badge.warn {
+      background: #f4a261;
+  }
+  .sidebar-badge.ok {
+      background: #52b788;
+  }
+</style>
+""", unsafe_allow_html=True)
 
 
-pq_raw  = st.file_uploader("Upload parquet report", accept_multiple_files=False, type="parquet")
+with st.sidebar:
+    st.markdown("## 🔬 DIA-NN QC")
+    st.markdown("---")
 
 
-if pq_raw:
-    report_data = pd.read_parquet(pq_raw)
-    report = ParquetReport(name="TEST")
-    report.load_data(report_data)
-    st.session_state["report"] = report
 
-    re_patt = st.text_input("Input a re-pattern to extract a unique identifier")
+    if (st.session_state.get("report") is not None) and (st.session_state.get("metadata") is not None):
+        
+        if st.session_state.get("report").data_loaded and st.session_state.get("report").data_id_mapped and st.session_state.get("metadata").data_loaded:
 
-    if re_patt and  st.session_state["report"].apply_regex(pattern=re_patt):
-        st.write("Showing application of re-pattern to Run")
-        st.table(st.session_state["report"].dataframe["Clean_ID"].head(5))
-    else:
-        ex = st.session_state["report"].dataframe.iloc[0]["Run"]
-        st.write(f"No useful re-pattern detected. Are you matching {ex}?")
+            st.session_state["report"].calc_sidebar_stats()
 
-metadata_raw = st.file_uploader("Upload metadata file", accept_multiple_files=False, type=["txt", "csv", "tsv"])
+            df = st.session_state["report"].dataframe
+            meta = st.session_state["metadata"].dataframe
+            n_samples = st.session_state["report"].n_samples
+            n_pgs = st.session_state["report"].n_pgs
+            n_precursors = st.session_state["report"].n_precursors
+            has_im = st.session_state["report"].is_timstof
 
-if metadata_raw:
-    metadata_data = pd.read_csv(metadata_raw, sep = ";")
-    metadata = MetadataFile(name="TEST")
-    metadata.load_data(metadata_data)
-    st.session_state["metadata"] = metadata
 
-    st.write("Showing first 5 rows of metadata")
-    st.table(st.session_state["metadata"].dataframe.head(5))
+            st.markdown(f"**Samples** &nbsp;<span class='sidebar-badge ok'>{n_samples}</span>", unsafe_allow_html=True)
+            st.markdown(f"**Protein groups** &nbsp;<span class='sidebar-badge'>{n_pgs}</span>", unsafe_allow_html=True)
+            st.markdown(f"**Precursors** &nbsp;<span class='sidebar-badge'>{n_precursors}</span>", unsafe_allow_html=True)
+            im_label = "diaPASEF ✓" if has_im else "Standard DIA"
+            im_cls = "ok" if has_im else "warn"
+            st.markdown(f"**Mode** &nbsp;<span class='sidebar-badge {im_cls}'>{im_label}</span>", unsafe_allow_html=True)
+
+            st.markdown("---")
+            st.markdown("**Groups** (from metadata)")
+            #if meta is not None and "group" in meta.columns:
+                #groups = meta["group"].value_counts()
+                #for g, cnt in groups.items():
+                    #st.markdown(f"&nbsp;• `{g}` — {cnt} samples")
+            #else:
+                #st.caption("No 'group' column found in metadata.")
+
+            #st.markdown("---")
+            if st.button("🔄 Reset / Load new data"):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
+        else:
+            st.info("Upload your data on the **Upload** tab to get started.")
+
+
+
+TAB_LABELS = [
+    "📂  Upload & Configure",
+    "📊  Raw Data QC",
+    "📋  Summary Statistics",
+]
+
+tabs = st.tabs(TAB_LABELS)
+
+with tabs[0]:
+    data_upload.render()
+
+with tabs[1]:
+    qc.render()
+
+with tabs[2]:
+    summary_stats.render()

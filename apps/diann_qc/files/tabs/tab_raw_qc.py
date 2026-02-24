@@ -36,6 +36,7 @@ _SECTIONS = {
 }
 
 def render():
+    
     if not st.session_state.get("data_loaded"):
         st.info("⬅️  Load your data on the **Upload & Configure** tab first.")
         return
